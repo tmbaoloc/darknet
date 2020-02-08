@@ -1,0 +1,5 @@
+classes= 1
+train = LP/train.txt
+valid = LP/test.txt
+names = LP/LP.names
+backup = LP/backup
