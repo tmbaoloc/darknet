@@ -65,16 +65,19 @@ def cvDrawBoxes(detections, img):
             binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,  85, 10)
             #kernel3 = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
             #thre_mor = cv2.morphologyEx(binary, cv2.MORPH_DILATE, kernel3)
-            _, cont, _= cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
+            #_, cont, _= cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            _, cont, _= cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+            
             plate_info = ""
 
             for c in sort_contours(cont):
                 (x, y, w, h) = cv2.boundingRect(c)
                 ratio = h/w
+                #if h < roi.shape[0]/2:
                 if 1.5<=ratio<=3.5: # Chon cac contour dam bao ve ratio w/h
+                    #if 0.3<=h/roi.shape[0]<=0.8: 
+                    #if True:
                     if 0.3<=h/roi.shape[0]<=0.8: 
-
                         # Ve khung chu nhat quanh so
                         cv2.rectangle(roi, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
@@ -95,7 +98,7 @@ def cvDrawBoxes(detections, img):
                             result = chr(result)
 
                         plate_info +=result
-            #cv2.imshow("Cac contour tim duoc", roi)
+            cv2.imshow("Cac contour tim duoc", roi)
             cv2.putText(img,
                         " [" + fine_tune(plate_info) + "]",
                         (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
