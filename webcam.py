@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import time
 import darknet
-
+from capture import VideoCaptureThreading
 
 # Ham sap xep contour tu trai sang phai tu tren xuong duoi
 
@@ -60,16 +60,13 @@ def cvDrawBoxes(detections, img):
             digit_h = 60 # Kich thuoc ki tu
             image1 = cv2.resize(image1, (300,200), 1)
             roi = image1
-            #model_svm = cv2.ml.SVM_load('svm.xml')
             gray = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
             binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,  85, 10)
             #kernel3 = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
             #thre_mor = cv2.morphologyEx(binary, cv2.MORPH_DILATE, kernel3)
             #_, cont, _= cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             _, cont, _= cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-            
             plate_info = ""
-
             for c in sort_contours(cont):
                 (x, y, w, h) = cv2.boundingRect(c)
                 ratio = h/w
@@ -77,7 +74,7 @@ def cvDrawBoxes(detections, img):
                 if 1.5<=ratio<=3.5: # Chon cac contour dam bao ve ratio w/h
                     #if 0.3<=h/roi.shape[0]<=0.8: 
                     #if True:
-                    if 0.3<=h/roi.shape[0]<=0.8: 
+                    if 0.25<=h/roi.shape[0]<=0.4: 
                         # Ve khung chu nhat quanh so
                         cv2.rectangle(roi, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
@@ -156,11 +153,12 @@ def YOLO():
                     pass
         except Exception:
             pass
-    
-    cap = cv2.VideoCapture(0)
-    
+    cap = VideoCaptureThreading(0)
+    cap.start()
+    # cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+    # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
     print("Starting the YOLO loop...")
-
+    
     # Create an image we reuse for each detect
     darknet_image = darknet.make_image(darknet.network_width(netMain),
                                     darknet.network_height(netMain),3)
@@ -169,7 +167,7 @@ def YOLO():
     while True:
         prev_time = time.time()
         ret, frame_read = cap.read()
-        if frame_read.size !=0:
+        if ret:
             frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
             frame_resized = cv2.resize(frame_rgb,
                                        (darknet.network_width(netMain),
@@ -190,7 +188,7 @@ def YOLO():
         
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-    cap.release()
+    cap.stop()
     cv2.destroyAllWindows()
     run_time = time.time() - start_time
     print("Run time: ",run_time)
