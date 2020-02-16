@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import time
 import darknet
-from capture import VideoCaptureThreading
+from Capture import VideoCaptureThreading
 
 # Ham sap xep contour tu trai sang phai tu tren xuong duoi
 
@@ -38,8 +38,6 @@ def fine_tune(lp):
     for i in range(len(lp)):
         if lp[i] in char_list:
             newString += lp[i]
-        else:
-            newString += '9'
     return newString
 
 def cvDrawBoxes(detections, img):
@@ -56,9 +54,7 @@ def cvDrawBoxes(detections, img):
         image1 = img[ymin:ymax,xmin:xmax]
         
         if image1.size !=0:
-            digit_w = 30 # Kich thuoc ki tu
-            digit_h = 60 # Kich thuoc ki tu
-            image1 = cv2.resize(image1, (300,200), 1)
+            #image1 = cv2.resize(image1, (300,200), 1)
             roi = image1
             gray = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
             binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,  85, 10)
@@ -71,7 +67,7 @@ def cvDrawBoxes(detections, img):
                 (x, y, w, h) = cv2.boundingRect(c)
                 ratio = h/w
                 #if h < roi.shape[0]/2:
-                if 1.5<=ratio<=3.5: # Chon cac contour dam bao ve ratio w/h
+                if 1.5<=ratio<=3: # Chon cac contour dam bao ve ratio w/h
                     #if 0.3<=h/roi.shape[0]<=0.8: 
                     #if True:
                     if 0.25<=h/roi.shape[0]<=0.4: 
@@ -113,9 +109,10 @@ altNames = None
 
 def YOLO():
     start_time = time.time()
-    global model_svm
+    global model_svm, metaMain, netMain, altNames, digit_w, digit_h
     model_svm = cv2.ml.SVM_load('svm.xml')
-    global metaMain, netMain, altNames
+    digit_w = 30 # Kich thuoc ki tu
+    digit_h = 60 # Kich thuoc ki tu
     configPath = "./LP/yolov3-tiny_obj.cfg"
     weightPath = "./yolov3-tiny_obj_4000.weights"
     metaPath = "./LP/LP.data"
@@ -168,15 +165,9 @@ def YOLO():
         prev_time = time.time()
         ret, frame_read = cap.read()
         if ret:
-            frame_rgb = cv2.cvtColor(frame_read, cv2.COLOR_BGR2RGB)
-            frame_resized = cv2.resize(frame_rgb,
-                                       (darknet.network_width(netMain),
-                                        darknet.network_height(netMain)),
-                                       interpolation=cv2.INTER_LINEAR)
-            darknet.copy_image_from_bytes(darknet_image,frame_resized.tobytes())
+            darknet.copy_image_from_bytes(darknet_image,frame_read.tobytes())
             detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
-            image = cvDrawBoxes(detections, frame_resized)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image = cvDrawBoxes(detections, frame_read)
             fps=(1/(time.time()-prev_time))
             fps= str(int(fps))
             cv2.putText(image,
