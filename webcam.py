@@ -2,20 +2,25 @@ from ctypes import *
 import math
 import random
 import os
+import sys
 import cv2
 import numpy as np
 import time
 import darknet
 from Capture import VideoCaptureThreading
-
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 # Ham sap xep contour tu trai sang phai tu tren xuong duoi
+
+useDatabase = True
+useGUI = False
 
 def sort_contours(cnts):
     list1=[]
     list2=[]
     for c in cnts:
         x, y, w, h=cv2.boundingRect(c)        
-        if y<75:
+        if y<50:
             list1.append(c)            
         else:
             list2.append(c)            
@@ -34,10 +39,15 @@ char_list =  '0123456789ABCDEFGHKLMNPRSTUVXYZ.-'
 
 # Ham fine tune bien so, loai bo cac ki tu khong hop ly
 def fine_tune(lp):
+    global pos
     newString = ""
     for i in range(len(lp)):
         if lp[i] in char_list:
             newString += lp[i]
+    if useDatabase:
+        if len(newString) > 6 and len(newString) < 9:
+            sheet.update_cell(pos,1, newString)
+            pos += 1
     return newString
 
 def cvDrawBoxes(detections, img):
@@ -77,7 +87,6 @@ def cvDrawBoxes(detections, img):
                         # Tach so va predict
                         curr_num = binary[y:y+h,x:x+w]
                         curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
-                        _, curr_num = cv2.threshold(curr_num, 30, 255, cv2.THRESH_BINARY)
                         curr_num = np.array(curr_num,dtype=np.float32)
                         curr_num = curr_num.reshape(-1, digit_w * digit_h)
 
@@ -91,31 +100,49 @@ def cvDrawBoxes(detections, img):
                             result = chr(result)
 
                         plate_info +=result
-            cv2.imshow("Cac contour tim duoc", roi)
-            cv2.putText(img,
-                        " [" + fine_tune(plate_info) + "]",
-                        (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
-                        [25, 25, 225], 2)
+            f_result = fine_tune(plate_info)
+            if useGUI:
+                cv2.imshow("Cac contour tim duoc", roi)
+                cv2.putText(img,
+                            " [" + f_result + "]",
+                            (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
+                            [25, 25, 225], 2)
+            else:
+                print(f_result)
             
         else: 
             continue
     return img
 
 
-netMain = None
-metaMain = None
-altNames = None
 
+    
 
-def YOLO():
+if __name__ == "__main__":
     start_time = time.time()
-    global model_svm, metaMain, netMain, altNames, digit_w, digit_h
+
+    ########## Database configuration ##########
+    if useDatabase:
+        scope = ["https://spreadsheets.google.com/feeds",'https://www.googleapis.com/auth/spreadsheets',
+                "https://www.googleapis.com/auth/drive.file","https://www.googleapis.com/auth/drive"]
+        creds = ServiceAccountCredentials.from_json_keyfile_name('Database.json', scope)
+        client = gspread.authorize(creds)
+        sheet = client.open('Database_ANPR').sheet1
+
+    ########### Variables declaration ##########
+    global model_svm, metaMain, netMain, altNames, digit_w, digit_h, pos
+    netMain = None
+    metaMain = None
+    altNames = None
+    pos = 2
     model_svm = cv2.ml.SVM_load('svm.xml')
     digit_w = 30 # Kich thuoc ki tu
     digit_h = 60 # Kich thuoc ki tu
     configPath = "./LP/yolov3-tiny_obj.cfg"
     weightPath = "./yolov3-tiny_obj_4000.weights"
     metaPath = "./LP/LP.data"
+
+    ########## Path validation ##########
     if not os.path.exists(configPath):
         raise ValueError("Invalid config path `" +
                          os.path.abspath(configPath)+"`")
@@ -150,6 +177,8 @@ def YOLO():
                     pass
         except Exception:
             pass
+
+
     cap = VideoCaptureThreading(0)
     cap.start()
     # cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
@@ -168,23 +197,20 @@ def YOLO():
             darknet.copy_image_from_bytes(darknet_image,frame_read.tobytes())
             detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
             image = cvDrawBoxes(detections, frame_read)
-            fps=(1/(time.time()-prev_time))
-            fps= str(int(fps))
-            cv2.putText(image,
-                        "FPS: "+ fps,
-                        (20,20), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                        [25, 25, 225], 2)
-            #print("FPS : %0.1f" %fps)
-            cv2.imshow('Demo', image)
-        
+            fps=str(int((1/(time.time()-prev_time))))
+            if useGUI:
+                cv2.putText(image,
+                            "FPS: "+ fps,
+                            (20,20), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                            [25, 25, 225], 2)
+                #print("FPS : %0.1f" %fps)
+                cv2.imshow('Demo', image)
+            else:
+                print(fps)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
     cap.stop()
     cv2.destroyAllWindows()
     run_time = time.time() - start_time
     print("Run time: ",run_time)
-    
-
-if __name__ == "__main__":
-    YOLO()
 
