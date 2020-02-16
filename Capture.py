@@ -7,7 +7,6 @@ class VideoCaptureThreading:
         self.cap = cv2.VideoCapture(self.src)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-        #self.detections = None
         self.grabbed, self.frame = self.cap.read()
         self.started = False
         self.read_lock = threading.Lock()
@@ -28,7 +27,8 @@ class VideoCaptureThreading:
         while self.started:
             grabbed, frame = self.cap.read()
             with self.read_lock:
-                frame_resized = cv2.resize(frame,
+                if grabbed:
+                    frame_resized = cv2.resize(frame,
                                 (608,416), interpolation=cv2.INTER_LINEAR)
                 self.grabbed = grabbed
                 self.frame = frame_resized
