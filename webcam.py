@@ -10,11 +10,12 @@ import darknet
 from Capture import VideoCaptureThreading
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+
+
+useDatabase = False
+useGUI = True
+
 # Ham sap xep contour tu trai sang phai tu tren xuong duoi
-
-useDatabase = True
-useGUI = False
-
 def sort_contours(cnts):
     list1=[]
     list2=[]
@@ -39,18 +40,16 @@ char_list =  '0123456789ABCDEFGHKLMNPRSTUVXYZ.-'
 
 # Ham fine tune bien so, loai bo cac ki tu khong hop ly
 def fine_tune(lp):
-    global pos
     newString = ""
     for i in range(len(lp)):
         if lp[i] in char_list:
             newString += lp[i]
-    if useDatabase:
-        if len(newString) > 6 and len(newString) < 9:
-            sheet.update_cell(pos,1, newString)
-            pos += 1
-    return newString
+    if len(newString) > 6 and len(newString) < 9:
+        return newString
+    return None
 
 def cvDrawBoxes(detections, img):
+    global pos
     for detection in detections:
         x, y, w, h = detection[2][0],\
             detection[2][1],\
@@ -68,16 +67,13 @@ def cvDrawBoxes(detections, img):
             roi = image1
             gray = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
             binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,  85, 10)
-            #kernel3 = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-            #thre_mor = cv2.morphologyEx(binary, cv2.MORPH_DILATE, kernel3)
-            #_, cont, _= cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             _, cont, _= cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
             plate_info = ""
             for c in sort_contours(cont):
                 (x, y, w, h) = cv2.boundingRect(c)
                 ratio = h/w
                 #if h < roi.shape[0]/2:
-                if 1.5<=ratio<=3: # Chon cac contour dam bao ve ratio w/h
+                if True: # Chon cac contour dam bao ve ratio w/h
                     #if 0.3<=h/roi.shape[0]<=0.8: 
                     #if True:
                     if 0.25<=h/roi.shape[0]<=0.4: 
@@ -101,14 +97,18 @@ def cvDrawBoxes(detections, img):
 
                         plate_info +=result
             f_result = fine_tune(plate_info)
-            if useGUI:
-                cv2.imshow("Cac contour tim duoc", roi)
-                cv2.putText(img,
-                            " [" + f_result + "]",
-                            (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
-                            [25, 25, 225], 2)
-            else:
-                print(f_result)
+            if f_result is not None:
+                if useDatabase:
+                    sheet.update_cell(pos,1, newString)
+                    pos += 1
+                if useGUI:
+                    cv2.imshow("Cac contour tim duoc", roi)
+                    cv2.putText(img,
+                                " [" + f_result + "]",
+                                (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
+                                [25, 25, 225], 2)
+                else:
+                    print(f_result)
             
         else: 
             continue
