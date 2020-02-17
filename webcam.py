@@ -101,17 +101,12 @@ def cvDrawBoxes(detections, img):
                 if useDatabase:
                     sheet.update_cell(pos,1, newString)
                     pos += 1
-                if useGUI:
-                    cv2.imshow("Cac contour tim duoc", roi)
-                    cv2.putText(img,
-                                " [" + f_result + "]",
-                                (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
-                                [25, 25, 225], 2)
-                else:
-                    print(f_result)
-            
-        else: 
-            continue
+
+                cv2.imshow("Cac contour tim duoc", roi)
+                cv2.putText(img,
+                            " [" + f_result + "]",
+                            (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
+                            [25, 25, 225], 2)
     return img
 
 
@@ -130,7 +125,7 @@ if __name__ == "__main__":
         sheet = client.open('Database_ANPR').sheet1
 
     ########### Variables declaration ##########
-    global model_svm, metaMain, netMain, altNames, digit_w, digit_h, pos
+    global model_svm, metaMain, netMain, altNames, digit_w, digit_h, pos, darknet_image
     netMain = None
     metaMain = None
     altNames = None
@@ -180,7 +175,7 @@ if __name__ == "__main__":
 
 
     cap = VideoCaptureThreading(0)
-    cap.start()
+    cap.start(netMain,metaMain)
     # cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
     # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
     print("Starting the YOLO loop...")
@@ -192,22 +187,18 @@ if __name__ == "__main__":
     print("Start time: ",init_time)
     while True:
         prev_time = time.time()
-        ret, frame_read = cap.read()
+        ret, frame_read, detections = cap.read_m()
         if ret:
-            darknet.copy_image_from_bytes(darknet_image,frame_read.tobytes())
-            detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
             image = cvDrawBoxes(detections, frame_read)
             fps=str(int((1/(time.time()-prev_time))))
-            if useGUI:
-                cv2.putText(image,
-                            "FPS: "+ fps,
-                            (20,20), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                            [25, 25, 225], 2)
-                #print("FPS : %0.1f" %fps)
-                cv2.imshow('Demo', image)
-            else:
-                print(fps)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            cv2.putText(image,
+                        "FPS: "+ fps,
+                        (20,20), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                        [25, 25, 225], 2)
+            #print("FPS : %0.1f" %fps)
+            cv2.imshow('Demo', image)
+            print(fps)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
     cap.stop()
     cv2.destroyAllWindows()
