@@ -8,11 +8,14 @@ import numpy as np
 import time
 import darknet
 from Capture import VideoCaptureThreading
+import threading
 import gspread
+from datetime import datetime
 from oauth2client.service_account import ServiceAccountCredentials
 
+mutex = threading.Lock()
 
-useDatabase = False
+useDatabase = True
 useGUI = True
 
 # Ham sap xep contour tu trai sang phai tu tren xuong duoi
@@ -48,8 +51,18 @@ def fine_tune(lp):
         return newString
     return None
 
+def pushDatabase(sheet, newString):
+    global pos, Existed
+    with mutex:
+        if newString not in Existed:
+            now = datetime.now()
+            sheet.update_cell(pos,1, now.strftime("%d/%m/%Y %H:%M:%S"))
+            sheet.update_cell(pos,2, newString)
+            Existed.append(newString)
+            pos += 1
+
 def cvDrawBoxes(detections, img):
-    global pos
+    global thread
     for detection in detections:
         x, y, w, h = detection[2][0],\
             detection[2][1],\
@@ -76,7 +89,7 @@ def cvDrawBoxes(detections, img):
                 if True: # Chon cac contour dam bao ve ratio w/h
                     #if 0.3<=h/roi.shape[0]<=0.8: 
                     #if True:
-                    if 0.25<=h/roi.shape[0]<=0.4: 
+                    if 0.25<=h/roi.shape[0]<=0.6: 
                         # Ve khung chu nhat quanh so
                         cv2.rectangle(roi, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
@@ -99,8 +112,8 @@ def cvDrawBoxes(detections, img):
             f_result = fine_tune(plate_info)
             if f_result is not None:
                 if useDatabase:
-                    sheet.update_cell(pos,1, newString)
-                    pos += 1
+                    thread = threading.Thread(target=pushDatabase, args=(sheet, f_result))
+                    thread.start()
 
                 cv2.imshow("Cac contour tim duoc", roi)
                 cv2.putText(img,
@@ -125,7 +138,8 @@ if __name__ == "__main__":
         sheet = client.open('Database_ANPR').sheet1
 
     ########### Variables declaration ##########
-    global model_svm, metaMain, netMain, altNames, digit_w, digit_h, pos, darknet_image
+    global model_svm, metaMain, netMain, altNames, digit_w, digit_h, pos, darknet_image, thread, Existed
+    Existed = []
     netMain = None
     metaMain = None
     altNames = None
@@ -181,8 +195,8 @@ if __name__ == "__main__":
     print("Starting the YOLO loop...")
     
     # Create an image we reuse for each detect
-    darknet_image = darknet.make_image(darknet.network_width(netMain),
-                                    darknet.network_height(netMain),3)
+    #darknet_image = darknet.make_image(darknet.network_width(netMain),
+    #                                darknet.network_height(netMain),3)
     init_time = time.time() - start_time
     print("Start time: ",init_time)
     while True:
@@ -201,6 +215,7 @@ if __name__ == "__main__":
         if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
     cap.stop()
+    thread.join()
     cv2.destroyAllWindows()
     run_time = time.time() - start_time
     print("Run time: ",run_time)
