@@ -19,19 +19,22 @@ useDatabase = True
 useGUI = True
 
 # Ham sap xep contour tu trai sang phai tu tren xuong duoi
-def sort_contours(cnts):
+def sort_contours(cnts,roi):
     list1=[]
     list2=[]
     for c in cnts:
         x, y, w, h=cv2.boundingRect(c)        
-        if y<50:
-            list1.append(c)            
-        else:
-            list2.append(c)            
-    sorted_list1 = sorted(list1, key=lambda ctr: cv2.boundingRect(ctr)[0])
-    sorted_list2 = sorted(list2, key=lambda ctr: cv2.boundingRect(ctr)[0])
-    cnts= sorted_list1 +sorted_list2 
-    return cnts
+        if 1.3 <= h/w <= 3.2 and 0.2 <=h/roi.shape[1]<=0.6: 
+            if y<50:
+                list1.append(c)            
+            else:
+                list2.append(c)            
+    if len(list1) == 4 and 3 < len(list2) < 6:
+        sorted_list1 = sorted(list1, key=lambda ctr: cv2.boundingRect(ctr)[0])
+        sorted_list2 = sorted(list2, key=lambda ctr: cv2.boundingRect(ctr)[0])
+        cnts= sorted_list1 +sorted_list2 
+        return cnts
+    return []
 
 def convertBack(x, y, w, h):
     xmin = int(round(x - (w / 2)))
@@ -40,14 +43,16 @@ def convertBack(x, y, w, h):
     ymax = int(round(y + (h / 2)))
     return xmin, ymin, xmax, ymax
 char_list =  '0123456789ABCDEFGHKLMNPRSTUVXYZ.-'
-
+tmp_list = 'ABCDEFGHKLMNPRSTUVXYZ'
 # Ham fine tune bien so, loai bo cac ki tu khong hop ly
 def fine_tune(lp):
     newString = ""
     for i in range(len(lp)):
         if lp[i] in char_list:
             newString += lp[i]
-    if len(newString) > 6 and len(newString) < 9:
+        else:
+            newString += '9'
+    if 7 < len(newString) < 10 and newString[2] in tmp_list:
         return newString
     return None
 
@@ -76,45 +81,33 @@ def cvDrawBoxes(detections, img):
         image1 = img[ymin:ymax,xmin:xmax]
         
         if image1.size !=0:
-            #image1 = cv2.resize(image1, (300,200), 1)
+            image1 = cv2.resize(image1, (300,200), 1)
             roi = image1
             gray = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
             binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,  85, 10)
             _, cont, _= cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
             plate_info = ""
-            for c in sort_contours(cont):
+            for c in sort_contours(cont,roi):
                 (x, y, w, h) = cv2.boundingRect(c)
-                ratio = h/w
-                #if h < roi.shape[0]/2:
-                if True: # Chon cac contour dam bao ve ratio w/h
-                    #if 0.3<=h/roi.shape[0]<=0.8: 
-                    #if True:
-                    if 0.25<=h/roi.shape[0]<=0.6: 
-                        # Ve khung chu nhat quanh so
-                        cv2.rectangle(roi, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-                        # Tach so va predict
-                        curr_num = binary[y:y+h,x:x+w]
-                        curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
-                        curr_num = np.array(curr_num,dtype=np.float32)
-                        curr_num = curr_num.reshape(-1, digit_w * digit_h)
-
-                        # Dua vao model SVM
-                        result = model_svm.predict(curr_num)[1]
-                        result = int(result[0, 0])
-
-                        if result<9: # Neu la so thi hien thi luon
-                            result = str(result)
-                        else: #Neu la chu thi chuyen bang ASCII
-                            result = chr(result)
-
-                        plate_info +=result
+                cv2.rectangle(roi, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                # Tach so va predict
+                curr_num = binary[y:y+h,x:x+w]
+                curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
+                curr_num = np.array(curr_num,dtype=np.float32)
+                curr_num = curr_num.reshape(-1, digit_w * digit_h)
+                # Dua vao model SVM
+                result = model_svm.predict(curr_num)[1]
+                result = int(result[0, 0])
+                if result<9: # Neu la so thi hien thi luon
+                    result = str(result)
+                else: #Neu la chu thi chuyen bang ASCII
+                    result = chr(result)
+                plate_info +=result
             f_result = fine_tune(plate_info)
             if f_result is not None:
                 if useDatabase:
                     thread = threading.Thread(target=pushDatabase, args=(sheet, f_result))
                     thread.start()
-
                 cv2.imshow("Cac contour tim duoc", roi)
                 cv2.putText(img,
                             " [" + f_result + "]",
@@ -192,19 +185,17 @@ if __name__ == "__main__":
     cap.start(netMain,metaMain)
     # cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
     # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-    print("Starting the YOLO loop...")
-    
-    # Create an image we reuse for each detect
-    #darknet_image = darknet.make_image(darknet.network_width(netMain),
-    #                                darknet.network_height(netMain),3)
     init_time = time.time() - start_time
-    print("Start time: ",init_time)
+    print("Init time: ",init_time)
+    print("Starting the YOLO loop...")
     while True:
-        prev_time = time.time()
+        read_time = time.time()
         ret, frame_read, detections = cap.read_m()
+        read_time = time.time() -read_time
         if ret:
+            prev_time = time.time()
             image = cvDrawBoxes(detections, frame_read)
-            fps=str(int((1/(time.time()-prev_time))))
+            fps=str(int((1/(time.time()-prev_time)+read_time)))
             cv2.putText(image,
                         "FPS: "+ fps,
                         (20,20), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
@@ -215,7 +206,6 @@ if __name__ == "__main__":
         if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
     cap.stop()
-    thread.join()
     cv2.destroyAllWindows()
     run_time = time.time() - start_time
     print("Run time: ",run_time)
