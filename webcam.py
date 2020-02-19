@@ -12,11 +12,9 @@ import threading
 import gspread
 from datetime import datetime
 from oauth2client.service_account import ServiceAccountCredentials
-
 mutex = threading.Lock()
 
-useDatabase = True
-useGUI = True
+useGUI = False
 
 # Ham sap xep contour tu trai sang phai tu tren xuong duoi
 def sort_contours(cnts,roi):
@@ -24,7 +22,7 @@ def sort_contours(cnts,roi):
     list2=[]
     for c in cnts:
         x, y, w, h=cv2.boundingRect(c)        
-        if 1.3 <= h/w <= 3.2 and 0.2 <=h/roi.shape[1]<=0.6: 
+        if 1.5 <= h/w <= 3 and 0.2 <=h/roi.shape[1]<=0.6: 
             if y<50:
                 list1.append(c)            
             else:
@@ -56,6 +54,7 @@ def fine_tune(lp):
         return newString
     return None
 
+
 def pushDatabase(sheet, newString):
     global pos, Existed
     with mutex:
@@ -79,56 +78,52 @@ def cvDrawBoxes(detections, img):
         pt2 = (xmax, ymax)
         cv2.rectangle(img, pt1, pt2, (0, 255, 0), 1)
         image1 = img[ymin:ymax,xmin:xmax]
-        
-        if image1.size !=0:
-            image1 = cv2.resize(image1, (300,200), 1)
-            roi = image1
-            gray = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
-            binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,  85, 10)
-            _, cont, _= cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-            plate_info = ""
-            for c in sort_contours(cont,roi):
-                (x, y, w, h) = cv2.boundingRect(c)
-                cv2.rectangle(roi, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                # Tach so va predict
-                curr_num = binary[y:y+h,x:x+w]
-                curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
-                curr_num = np.array(curr_num,dtype=np.float32)
-                curr_num = curr_num.reshape(-1, digit_w * digit_h)
-                # Dua vao model SVM
-                result = model_svm.predict(curr_num)[1]
-                result = int(result[0, 0])
-                if result<9: # Neu la so thi hien thi luon
-                    result = str(result)
-                else: #Neu la chu thi chuyen bang ASCII
-                    result = chr(result)
-                plate_info +=result
-            f_result = fine_tune(plate_info)
-            if f_result is not None:
-                if useDatabase:
-                    thread = threading.Thread(target=pushDatabase, args=(sheet, f_result))
-                    thread.start()
+        #if image1.size !=0:
+        image1 = cv2.resize(image1, (300,200), 1)
+        roi = image1
+        gray = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
+        binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,  85, 10)
+        _, cont, _= cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        plate_info = ""
+        for c in sort_contours(cont,roi):
+            (x, y, w, h) = cv2.boundingRect(c)
+            cv2.rectangle(roi, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            # Tach so va predict
+            curr_num = binary[y:y+h,x:x+w]
+            curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
+            curr_num = np.array(curr_num,dtype=np.float32)
+            curr_num = curr_num.reshape(-1, digit_w * digit_h)
+            # Dua vao model SVM
+            result = model_svm.predict(curr_num)[1]
+            result = int(result[0, 0])
+            if result<9: # Neu la so thi hien thi luon
+                result = str(result)
+            else: #Neu la chu thi chuyen bang ASCII
+                result = chr(result)
+            plate_info +=result
+        f_result = fine_tune(plate_info)
+        if f_result is not None:
+            thread = threading.Thread(target=pushDatabase, args=(sheet, f_result))
+            thread.start()
+            if useGUI:
                 cv2.imshow("Cac contour tim duoc", roi)
                 cv2.putText(img,
                             " [" + f_result + "]",
                             (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
                             [25, 25, 225], 2)
+            else:
+                print("LP: ",f_result)
     return img
-
-
-
-    
 
 if __name__ == "__main__":
     start_time = time.time()
 
     ########## Database configuration ##########
-    if useDatabase:
-        scope = ["https://spreadsheets.google.com/feeds",'https://www.googleapis.com/auth/spreadsheets',
-                "https://www.googleapis.com/auth/drive.file","https://www.googleapis.com/auth/drive"]
-        creds = ServiceAccountCredentials.from_json_keyfile_name('Database.json', scope)
-        client = gspread.authorize(creds)
-        sheet = client.open('Database_ANPR').sheet1
+    scope = ["https://spreadsheets.google.com/feeds",'https://www.googleapis.com/auth/spreadsheets',
+            "https://www.googleapis.com/auth/drive.file","https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name('Database.json', scope)
+    client = gspread.authorize(creds)
+    sheet = client.open('Database_ANPR').sheet1
 
     ########### Variables declaration ##########
     global model_svm, metaMain, netMain, altNames, digit_w, digit_h, pos, darknet_image, thread, Existed
@@ -180,7 +175,6 @@ if __name__ == "__main__":
         except Exception:
             pass
 
-
     cap = VideoCaptureThreading(0)
     cap.start(netMain,metaMain)
     # cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
@@ -191,18 +185,19 @@ if __name__ == "__main__":
     while True:
         read_time = time.time()
         ret, frame_read, detections = cap.read_m()
-        read_time = time.time() -read_time
         if ret:
             prev_time = time.time()
             image = cvDrawBoxes(detections, frame_read)
-            fps=str(int((1/(time.time()-prev_time)+read_time)))
-            cv2.putText(image,
-                        "FPS: "+ fps,
-                        (20,20), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                        [25, 25, 225], 2)
-            #print("FPS : %0.1f" %fps)
-            cv2.imshow('Demo', image)
-            print(fps)
+            if useGUI:
+                fps=str(int((1/(time.time()-read_time))))
+                cv2.putText(image,
+                            "FPS: "+ fps,
+                            (20,20), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                            [25, 25, 225], 2)
+                
+                cv2.imshow('Demo', image)
+            else:
+                print("FPS : %0.1f" %(1/(time.time()-read_time)))
         if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
     cap.stop()
