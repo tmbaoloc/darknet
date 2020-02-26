@@ -27,12 +27,10 @@ def sort_contours(cnts,roi):
                 list1.append(c)            
             else:
                 list2.append(c)            
-    if len(list1) == 4 and 3 < len(list2) < 6:
-        sorted_list1 = sorted(list1, key=lambda ctr: cv2.boundingRect(ctr)[0])
-        sorted_list2 = sorted(list2, key=lambda ctr: cv2.boundingRect(ctr)[0])
-        cnts= sorted_list1 +sorted_list2 
-        return cnts
-    return []
+    sorted_list1 = sorted(list1, key=lambda ctr: cv2.boundingRect(ctr)[0])
+    sorted_list2 = sorted(list2, key=lambda ctr: cv2.boundingRect(ctr)[0])
+    cnts= sorted_list1 +sorted_list2 
+    return cnts
 
 def convertBack(x, y, w, h):
     xmin = int(round(x - (w / 2)))
@@ -50,9 +48,7 @@ def fine_tune(lp):
             newString += lp[i]
         else:
             newString += '9'
-    if 7 < len(newString) < 10 and newString[2] in tmp_list:
-        return newString
-    return None
+    return newString
 
 
 def pushDatabase(sheet, newString):
@@ -103,8 +99,6 @@ def cvDrawBoxes(detections, img):
                 plate_info +=result
             f_result = fine_tune(plate_info)
             if f_result is not None:
-                thread = threading.Thread(target=pushDatabase, args=(sheet, f_result))
-                thread.start()
                 if useGUI:
                     cv2.imshow("Cac contour tim duoc", roi)
                     cv2.putText(img,
@@ -117,13 +111,6 @@ def cvDrawBoxes(detections, img):
 
 if __name__ == "__main__":
     start_time = time.time()
-
-    ########## Database configuration ##########
-    scope = ["https://spreadsheets.google.com/feeds",'https://www.googleapis.com/auth/spreadsheets',
-            "https://www.googleapis.com/auth/drive.file","https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name('Database.json', scope)
-    client = gspread.authorize(creds)
-    sheet = client.open('Database_ANPR').sheet1
 
     ########### Variables declaration ##########
     global model_svm, metaMain, netMain, altNames, digit_w, digit_h, pos, darknet_image, thread, Existed
@@ -177,8 +164,6 @@ if __name__ == "__main__":
 
     cap = VideoCaptureThreading(0)
     cap.start(netMain,metaMain)
-    # cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-    # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
     init_time = time.time() - start_time
     print("Init time: ",init_time)
     print("Starting the YOLO loop...")

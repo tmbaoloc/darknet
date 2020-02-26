@@ -44,7 +44,7 @@ Thumbs.db
 # IDE generated #
 .vs/
 .vscode/
-
+__pycache__/
 # Managed by CMake
 src/version.h
 
@@ -55,3 +55,4 @@ include/darknet/
 uselib
 uselib_track
 darknet
+Database.json
