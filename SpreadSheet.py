@@ -10,7 +10,8 @@ client = gspread.authorize(creds)
 # Find a workbook by name and open the first sheet
 # Make sure you use the right name here.
 sheet = client.open('Database_ANPR').sheet1
-sheet.update_cell(3,1,)
+#sheet.update_cell(3,1,)
+sheet.append_row(['test1.jpg', '=IMAGE(\"{}\")'.format(image_url)])
 # # Extract and print all of the values
 list_of_hashes = sheet.get_all_records()
 print(list_of_hashes)

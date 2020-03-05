@@ -1,0 +1,100 @@
+ Try to load cfg: ./LP/yolov3-tiny_obj.cfg, weights: ./yolov3-tiny_obj_4000.weights, clear = 0 
+net.optimized_memory = 0 
+batch = 1, time_steps = 1, train = 0 
+ Try to load weights: ./yolov3-tiny_obj_4000.weights 
+Init time:  13.181351900100708
+Starting the YOLO loop...
+Run time:  13.196337461471558
+
+ seen 64, trained: 256 K-images (4 Kilo-batches_64) 
+Loaded - names_list: LP/LP.names, classes = 1 
+ Try to load cfg: ./LP/yolov3-tiny_obj.cfg, weights: ./yolov3-tiny_obj_4000.weights, clear = 0 
+net.optimized_memory = 0 
+batch = 1, time_steps = 1, train = 0 
+ Try to load weights: ./yolov3-tiny_obj_4000.weights 
+Init time:  15.275262594223022
+Starting the YOLO loop...
+Run time:  15.331770658493042
+
+ seen 64, trained: 256 K-images (4 Kilo-batches_64) 
+Loaded - names_list: LP/LP.names, classes = 1 
+ Try to load cfg: ./LP/yolov3-tiny_obj.cfg, weights: ./yolov3-tiny_obj_4000.weights, clear = 0 
+net.optimized_memory = 0 
+batch = 1, time_steps = 1, train = 0 
+ Try to load weights: ./yolov3-tiny_obj_4000.weights 
+Init time:  15.651180505752563
+Starting the YOLO loop...
+Run time:  15.652815818786621
+
+ seen 64, trained: 256 K-images (4 Kilo-batches_64) 
+Loaded - names_list: LP/LP.names, classes = 1 
+ Try to load cfg: ./LP/yolov3-tiny_obj.cfg, weights: ./yolov3-tiny_obj_4000.weights, clear = 0 
+net.optimized_memory = 0 
+batch = 1, time_steps = 1, train = 0 
+ Try to load weights: ./yolov3-tiny_obj_4000.weights 
+Init time:  13.55260682106018
+Starting the YOLO loop...
+Run time:  13.581091165542603
+
+ seen 64, trained: 256 K-images (4 Kilo-batches_64) 
+Loaded - names_list: LP/LP.names, classes = 1 
+ Try to load cfg: ./LP/yolov3-tiny_obj.cfg, weights: ./yolov3-tiny_obj_4000.weights, clear = 0 
+net.optimized_memory = 0 
+batch = 1, time_steps = 1, train = 0 
+ Try to load weights: ./yolov3-tiny_obj_4000.weights 
+Init time:  13.282755136489868
+Starting the YOLO loop...
+Run time:  13.287376403808594
+
+ seen 64, trained: 256 K-images (4 Kilo-batches_64) 
+Loaded - names_list: LP/LP.names, classes = 1 
+ Try to load cfg: ./LP/yolov3-tiny_obj.cfg, weights: ./yolov3-tiny_obj_4000.weights, clear = 0 
+net.optimized_memory = 0 
+batch = 1, time_steps = 1, train = 0 
+ Try to load weights: ./yolov3-tiny_obj_4000.weights 
+Init time:  13.266344785690308
+Starting the YOLO loop...
+Run time:  13.317448139190674
+
+ seen 64, trained: 256 K-images (4 Kilo-batches_64) 
+Loaded - names_list: LP/LP.names, classes = 1 
+ Try to load cfg: ./LP/yolov3-tiny_obj.cfg, weights: ./yolov3-tiny_obj_4000.weights, clear = 0 
+net.optimized_memory = 0 
+batch = 1, time_steps = 1, train = 0 
+ Try to load weights: ./yolov3-tiny_obj_4000.weights 
+Init time:  12.861429691314697
+Starting the YOLO loop...
+Run time:  12.874379873275757
+
+ seen 64, trained: 256 K-images (4 Kilo-batches_64) 
+Loaded - names_list: LP/LP.names, classes = 1 
+ Try to load cfg: ./LP/yolov3-tiny_obj.cfg, weights: ./yolov3-tiny_obj_4000.weights, clear = 0 
+net.optimized_memory = 0 
+batch = 1, time_steps = 1, train = 0 
+ Try to load weights: ./yolov3-tiny_obj_4000.weights 
+Init time:  15.456876754760742
+Starting the YOLO loop...
+Run time:  15.458666563034058
+
+ seen 64, trained: 256 K-images (4 Kilo-batches_64) 
+Loaded - names_list: LP/LP.names, classes = 1 
+ Try to load cfg: ./LP/yolov3-tiny_obj.cfg, weights: ./yolov3-tiny_obj_4000.weights, clear = 0 
+net.optimized_memory = 0 
+batch = 1, time_steps = 1, train = 0 
+ Try to load weights: ./yolov3-tiny_obj_4000.weights 
+Init time:  11.412060737609863
+Starting the YOLO loop...
+Run time:  11.499075651168823
+
+ seen 64, trained: 256 K-images (4 Kilo-batches_64) 
+Loaded - names_list: LP/LP.names, classes = 1 
+ Try to load cfg: ./LP/yolov3-tiny_obj.cfg, weights: ./yolov3-tiny_obj_4000.weights, clear = 0 
+net.optimized_memory = 0 
+batch = 1, time_steps = 1, train = 0 
+ Try to load weights: ./yolov3-tiny_obj_4000.weights 
+Init time:  13.003034353256226
+Starting the YOLO loop...
+Run time:  13.060575723648071
+
+ seen 64, trained: 256 K-images (4 Kilo-batches_64) 
+Loaded - names_list: LP/LP.names, classes = 1 

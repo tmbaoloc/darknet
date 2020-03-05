@@ -10,30 +10,27 @@ import darknet
 from Capture import VideoCaptureThreading
 import threading
 import gspread
+#import gramma_correction
 from datetime import datetime
 from oauth2client.service_account import ServiceAccountCredentials
 mutex = threading.Lock()
 
 useGUI = True
-
 # Ham sap xep contour tu trai sang phai tu tren xuong duoi
 def sort_contours(cnts,roi):
     list1=[]
     list2=[]
     for c in cnts:
         x, y, w, h=cv2.boundingRect(c)        
-        #if True:
-        if 1.2 <= h/w <= 3.5 and 0.2 <=h/roi.shape[1]<=0.6: 
+        if 1.5 <= h/w <= 3 and 0.2 <=h/roi.shape[1]<=0.6: 
             if y<50:
                 list1.append(c)            
             else:
                 list2.append(c)            
-    if len(list1) == 4 and 3 < len(list2) < 6:
-        sorted_list1 = sorted(list1, key=lambda ctr: cv2.boundingRect(ctr)[0])
-        sorted_list2 = sorted(list2, key=lambda ctr: cv2.boundingRect(ctr)[0])
-        cnts= sorted_list1 +sorted_list2 
-        return cnts
-    return []
+    sorted_list1 = sorted(list1, key=lambda ctr: cv2.boundingRect(ctr)[0])
+    sorted_list2 = sorted(list2, key=lambda ctr: cv2.boundingRect(ctr)[0])
+    cnts= sorted_list1 +sorted_list2 
+    return cnts
 
 def convertBack(x, y, w, h):
     xmin = int(round(x - (w / 2)))
@@ -56,11 +53,10 @@ def fine_tune(lp):
         return None
     if 7 < len(newString) < 10 and newString[2] not in char_list:
         return None
-    for i in range(len(newString)):
-        if i != 2 and newString[i] not in num_list:
-            return None
+    # for i in range(len(newString)):
+    #     if i != 2 or i != 3 and newString[i] not in num_list:
+    #         return None
     return newString
-    
 
 
 def pushDatabase(sheet, newString):
@@ -75,6 +71,7 @@ def pushDatabase(sheet, newString):
 
 def cvDrawBoxes(detections, img):
     global thread
+    f_result = ""
     for detection in detections:
         x, y, w, h = detection[2][0],\
             detection[2][1],\
@@ -90,7 +87,7 @@ def cvDrawBoxes(detections, img):
             image1 = cv2.resize(image1, (300,200), 1)
             roi = image1
             gray = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
-            binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,  85, 10)
+            binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV,  63, 10)
             _, cont, _= cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
             plate_info = ""
             for c in sort_contours(cont,roi):
@@ -113,20 +110,15 @@ def cvDrawBoxes(detections, img):
             if f_result is not None:
                 thread = threading.Thread(target=pushDatabase, args=(sheet, f_result))
                 thread.start()
-                if useGUI:
-                    #cv2.imshow("Cac contour tim duoc", roi)
-                    #print("LP: ",f_result)
-                    cv2.putText(img,
-                                " [" + f_result + "]",
-                                (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
-                                [25, 25, 225], 2)
-                else:
-                    print("LP: ",f_result)
+                print(f_result)
+                cv2.putText(img,
+                            " [" + f_result + "]",
+                            (pt1[0], pt1[1] - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
+                            [25, 25, 225], 2)
     return img
 
 if __name__ == "__main__":
     start_time = time.time()
-
     ########## Database configuration ##########
     scope = ["https://spreadsheets.google.com/feeds",'https://www.googleapis.com/auth/spreadsheets',
             "https://www.googleapis.com/auth/drive.file","https://www.googleapis.com/auth/drive"]
@@ -183,35 +175,20 @@ if __name__ == "__main__":
                     pass
         except Exception:
             pass
-
-    cap = VideoCaptureThreading(0)
-    cap.start(netMain,metaMain)
-    time.sleep(2)
-    # cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-    # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+    darknet_image = darknet.make_image(608,416,3)
     init_time = time.time() - start_time
     print("Init time: ",init_time)
     print("Starting the YOLO loop...")
-    while True:
-        read_time = time.time()
-        ret, frame_read, detections = cap.read_m()
-        if ret:
-            prev_time = time.time()
-            image = cvDrawBoxes(detections, frame_read)
-            if useGUI:
-                fps=str(int((1/(time.time()-read_time))))
-                # cv2.putText(image,
-                #             "FPS: "+ fps,
-                #             (20,20), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                #             [25, 25, 225], 2)
-                print("FPS : %0.1f" %(1/(time.time()-read_time)))
-                cv2.imshow('Demo', image)
-            else:
-                print("FPS : %0.1f" %(1/(time.time()-read_time)))
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-    cap.stop()
+    folder = "/home/jetson/thesis/test_image/"
+    out_folder = "/home/jetson/thesis/result_image/"
+    for filename in os.listdir(folder):
+        img = cv2.imread(os.path.join(folder,filename))
+        if img is not None:
+            frame_resized = cv2.resize(img,
+                        (608,416), interpolation=cv2.INTER_LINEAR)
+            darknet.copy_image_from_bytes(darknet_image,frame_resized.tobytes())
+            detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
+            image = cvDrawBoxes(detections, frame_resized)
+            cv2.imwrite(os.path.join(out_folder,filename), image)
     cv2.destroyAllWindows()
-    run_time = time.time() - start_time
-    print("Run time: ",run_time)
 
